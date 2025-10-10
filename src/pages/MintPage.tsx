@@ -13,8 +13,15 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { storeNFT } from '../services/minting';
 
-const categories: string[] = [];
+const categories: string[] = [
+  'Art',
+  'Stories',
+  'Poem',
+  'Comic',
+  'Webtoon'
+];
 import { Switch } from '../components/ui/switch';
 import { connectWallet, mintNFT } from '../utils/blockchain';
 import { ethers } from 'ethers';
@@ -48,9 +55,9 @@ export function MintPage() {
     const files = Array.from(e.dataTransfer.files);
     const file = files[0];
     
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
       setDraggedFile(file);
-      const url = URL.createObjectURL(file);
+      const url = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
       setPreviewUrl(url);
     }
   }, []);
@@ -96,49 +103,6 @@ export function MintPage() {
     }));
   };
 
-  const lazyMintNFT = async () => {
-    if (!draggedFile) return;
-
-    toast.loading('Saving NFT data...', { id: 'mint' });
-
-    // In a real app, you'd upload the image to a decentralized storage like IPFS
-    // and get a URL. For this example, we'll simulate this.
-    const imageUrl = previewUrl;
-
-    const newNFT = {
-      title: formData.title,
-      description: formData.description,
-      image: imageUrl,
-      price: parseFloat(formData.price),
-      category: formData.category,
-      tags: formData.tags,
-      royalty: formData.royalty[0],
-      supply: formData.supply,
-      minted: false, // Key for lazy minting
-      // Add other relevant fields like creator_id from auth session
-    };
-
-    // Here you would insert into your Supabase table
-    // const { error } = await supabase.from('nfts').insert([newNFT]);
-    
-    // Mocking the async operation for now
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    try {
-        // Mocking the async operation for now
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        // In a real app, if there was an error, you would throw it.
-        // For example: throw new Error("Failed to save NFT data.");
-
-        toast.success(`NFT "${formData.title}" is ready to be minted upon sale!`, {
-            id: 'mint',
-            duration: 5000,
-        });
-        resetFormAndNavigate();
-    } catch (error: any) {
-        toast.error(`Error saving NFT: ${error.message || 'An unknown error occurred'}`, { id: 'mint' });
-        setIsMinting(false);
-    }
-  };
 
   const resetFormAndNavigate = () => {
     setFormData({
@@ -172,27 +136,56 @@ export function MintPage() {
       return;
     }
 
-    if (!signer) {
-      toast.error('Please connect your wallet to mint an NFT');
-      return;
-    }
-
     setIsMinting(true);
 
-    // In a real application, you would upload the image and metadata to IPFS
-    // and get a tokenURI. For this example, we'll use a placeholder.
-    const tokenURI = "ipfs://your-metadata-hash";
+    if (isLazyMint) {
+      // Handle Lazy Minting
+      toast.loading('Saving NFT data for lazy minting...', { id: 'mint' });
+      try {
+        const metadataUrl = await storeNFT(draggedFile, formData.title, formData.description);
+        
+        // In a real app, you would save the metadataUrl to your database
+        console.log('Lazy mint metadata URL:', metadataUrl);
+        // const { error } = await supabase.from('nfts').insert([{ ...formData, metadata_url: metadataUrl, image: previewUrl }]);
 
-    toast.loading('Minting NFT on the blockchain...', { id: 'mint' });
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Mock DB call
 
-    await mintNFT(signer, tokenURI);
+        toast.success(`NFT "${formData.title}" is ready for lazy minting!`, {
+          id: 'mint',
+          duration: 5000,
+        });
+        resetFormAndNavigate();
+      } catch (error: any) {
+        console.error('Lazy minting failed:', error);
+        toast.error(`Failed to save for lazy minting: ${error.message || 'Unknown error'}`, { id: 'mint' });
+        setIsMinting(false);
+      }
+    } else {
+      // Handle Direct Minting
+      if (!signer) {
+        toast.error('Please connect your wallet to mint an NFT');
+        setIsMinting(false);
+        return;
+      }
 
-    toast.success(`NFT "${formData.title}" minted successfully!`, {
-      id: 'mint',
-      duration: 5000,
-    });
+      try {
+        toast.loading('Uploading to IPFS...', { id: 'mint' });
+        const tokenURI = await storeNFT(draggedFile, formData.title, formData.description);
 
-    resetFormAndNavigate();
+        toast.loading('Minting NFT on the blockchain...', { id: 'mint' });
+        await mintNFT(signer, tokenURI);
+
+        toast.success(`NFT "${formData.title}" minted successfully!`, {
+          id: 'mint',
+          duration: 5000,
+        });
+        resetFormAndNavigate();
+      } catch (error: any) {
+        console.error('Minting failed:', error);
+        toast.error(`Minting failed: ${error.message || 'Unknown error'}`, { id: 'mint' });
+        setIsMinting(false);
+      }
+    }
   };
 
   const isFormValid = draggedFile && formData.title && formData.description && formData.category && formData.price;
@@ -242,7 +235,7 @@ export function MintPage() {
                           <div>
                             <h3 className="font-medium">Drop your file here</h3>
                             <p className="text-sm text-muted-foreground">
-                              PNG, JPG, GIF up to 10MB
+                              PNG, JPG, GIF, PDF, DOCX up to 10MB
                             </p>
                           </div>
                           <div className="space-y-2">
@@ -255,7 +248,7 @@ export function MintPage() {
                             <input
                               id="file-upload"
                               type="file"
-                              accept="image/*"
+                              accept="image/*,.pdf,.doc,.docx"
                               onChange={handleFileSelect}
                               className="hidden"
                             />
@@ -265,18 +258,24 @@ export function MintPage() {
                     ) : (
                       <div className="space-y-4">
                         <div className="relative group">
-                          <div className="aspect-square rounded-lg overflow-hidden">
-                            <ImageWithFallback
-                              src={previewUrl}
-                              alt="Preview"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                          {previewUrl ? (
+                            <div className="aspect-square rounded-lg overflow-hidden">
+                              <ImageWithFallback
+                                src={previewUrl}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="aspect-square rounded-lg overflow-hidden flex items-center justify-center bg-muted">
+                              <p className="text-muted-foreground">{draggedFile?.name}</p>
+                            </div>
+                          )}
                           <Button
                             type="button"
                             size="icon"
                             variant="destructive"
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-2 right-2 opacity-100"
                             onClick={removeFile}
                           >
                             <X className="h-4 w-4" />

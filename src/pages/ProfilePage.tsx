@@ -74,7 +74,7 @@ export function ProfilePage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col items-center">
         <Avatar className="h-32 w-32 border-4 border-purple-500/50">
-          <AvatarImage src={profile.avatar_url} />
+          <AvatarImage src={profile.avatar_url || 'https://i.imgur.com/5d8bSzg.png'} />
           <AvatarFallback>{profile.username?.[0]}</AvatarFallback>
         </Avatar>
         <h1 className="text-4xl font-bold mt-4">{profile.username}</h1>

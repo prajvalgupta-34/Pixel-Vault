@@ -51,7 +51,7 @@ export function TransactionHistory({ nftId }: TransactionHistoryProps) {
             <li key={tx.id} className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Avatar>
-                  <AvatarImage src={tx.buyer.avatar_url} />
+                  <AvatarImage src={tx.buyer.avatar_url || 'https://i.imgur.com/5d8bSzg.png'} />
                   <AvatarFallback>{tx.buyer.username?.[0]}</AvatarFallback>
                 </Avatar>
                 <div>

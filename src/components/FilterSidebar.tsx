@@ -9,7 +9,13 @@ import { Separator } from './ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import '../styles/custom.css';
 
-const categories: string[] = [];
+const categories: string[] = [
+  'All',
+  'Art',
+  'Comics',
+  'Poems',
+  'Stories'
+];
 const sortOptions: { value: string; label: string }[] = [];
 
 interface FilterSidebarProps {
@@ -41,12 +47,16 @@ export function FilterSidebar({ isOpen, onClose, onFiltersChange }: FilterSideba
     if (category === 'All') {
       newCategories = checked ? ['All'] : [];
     } else {
-      newCategories = checked
-        ? [...selectedCategories.filter(c => c !== 'All'), category]
-        : selectedCategories.filter(c => c !== category);
-      
+      if (checked) {
+        newCategories = [...selectedCategories.filter(c => c !== 'All'), category];
+      } else {
+        newCategories = selectedCategories.filter(c => c !== category);
+      }
+
       if (newCategories.length === 0) {
         newCategories = ['All'];
+      } else if (newCategories.length > 1 && newCategories.includes('All')) {
+        newCategories = newCategories.filter(c => c !== 'All');
       }
     }
     

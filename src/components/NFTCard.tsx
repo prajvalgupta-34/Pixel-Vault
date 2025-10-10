@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Heart, Eye, MoreHorizontal, ShoppingCart, ExternalLink, Zap } from 'lucide-react';
+import { Heart, Eye, MoreHorizontal, ShoppingCart, ExternalLink, Zap, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -10,17 +10,22 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NeonButton } from './NeonButton';
 import { NFT } from '../types.ts';
+import { ListNFTModal } from './ListNFTModal';
+
 
 interface NFTCardProps {
   nft: NFT;
   onQuickBuy?: (nft: NFT) => void;
+  onNFTListed: () => void;
   showQuickBuy?: boolean;
+  currentUserAddress?: string;
 }
 
-export function NFTCard({ nft, onQuickBuy, showQuickBuy = true }: NFTCardProps) {
+export function NFTCard({ nft, onQuickBuy, onNFTListed, showQuickBuy = true, currentUserAddress }: NFTCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -120,14 +125,14 @@ export function NFTCard({ nft, onQuickBuy, showQuickBuy = true }: NFTCardProps) 
             </Badge>
           </div>
 
-          {/* Quick Buy Button */}
-          {showQuickBuy && nft.isListed && onQuickBuy && (
-            <motion.div 
+          {/* Buy Now Button */}
+          {showQuickBuy && nft.isListed && (
+            <motion.div
               className="absolute bottom-3 right-3"
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ 
-                opacity: isHovered ? 1 : 0, 
-                scale: isHovered ? 1 : 0.8 
+              animate={{
+                opacity: isHovered ? 1 : 0,
+                scale: isHovered ? 1 : 0.8,
               }}
               transition={{ duration: 0.2 }}
             >
@@ -135,8 +140,8 @@ export function NFTCard({ nft, onQuickBuy, showQuickBuy = true }: NFTCardProps) 
                 size="sm"
                 onClick={handleQuickBuyWrapper}
               >
-                <Zap className="h-4 w-4 mr-1" />
-                Quick Buy
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                Buy Now
               </NeonButton>
             </motion.div>
           )}
@@ -147,7 +152,7 @@ export function NFTCard({ nft, onQuickBuy, showQuickBuy = true }: NFTCardProps) 
             animate={{
               borderColor: isHovered 
                 ? ['rgba(139, 92, 246, 0.5)', 'rgba(6, 182, 212, 0.5)', 'rgba(236, 72, 153, 0.5)', 'rgba(139, 92, 246, 0.5)']
-                : 'transparent'
+                : 'rgba(0, 0, 0, 0)'
             }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           />
@@ -164,23 +169,18 @@ export function NFTCard({ nft, onQuickBuy, showQuickBuy = true }: NFTCardProps) 
               </Link>
               <div className="flex items-center space-x-2 mt-1">
                 <Avatar className="h-5 w-5 border border-purple-500/50">
-                  {nft.creator && (
+                  {nft.owner && (
                     <>
-                      <AvatarImage src={nft.creator.avatar} />
+                      <AvatarImage src={nft.owner.avatar} />
                       <AvatarFallback className="text-xs bg-purple-500/20 text-purple-300">
-                        {nft.creator?.name?.[0]}
+                        {nft.owner?.name?.[0]}
                       </AvatarFallback>
                     </>
                   )}
                 </Avatar>
                 <span className="text-sm text-gray-400">
-                  by {nft.creator?.name}
+                  Owner: {nft.owner?.name}
                 </span>
-                {nft.creator?.verified && (
-                  <div className="h-4 w-4 bg-cyan-500 rounded-full flex items-center justify-center neon-glow">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -223,7 +223,23 @@ export function NFTCard({ nft, onQuickBuy, showQuickBuy = true }: NFTCardProps) 
             </div>
           </div>
         </CardContent>
+        {currentUserAddress && currentUserAddress.toLowerCase() === nft.owner.name.toLowerCase() && !nft.isListed && (
+          <div className="p-4">
+            <NeonButton onClick={() => setIsListModalOpen(true)} className="w-full">
+              <Tag className="mr-2 h-4 w-4" />
+              List for Sale
+            </NeonButton>
+          </div>
+        )}
       </Card>
+
+      {isListModalOpen && (
+        <ListNFTModal
+          nft={nft}
+          onClose={() => setIsListModalOpen(false)}
+          onNFTListed={onNFTListed}
+        />
+      )}
     </motion.div>
   );
 }

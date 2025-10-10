@@ -1,12 +1,14 @@
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 
 interface NeonButtonProps {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: 'primary' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
 }
 
 export function NeonButton({ 
@@ -14,14 +16,17 @@ export function NeonButton({
   onClick, 
   variant = 'primary', 
   size = 'md',
-  className = '' 
+  className = '',
+  type = 'button',
+  disabled = false
 }: NeonButtonProps) {
   const [isClicked, setIsClicked] = useState(false);
 
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (disabled) return;
     setIsClicked(true);
     setTimeout(() => setIsClicked(false), 300);
-    onClick?.();
+    onClick?.(event);
   };
 
   const sizeClasses = {
@@ -42,16 +47,19 @@ export function NeonButton({
         bg-gradient-to-r ${variantClasses[variant]}
         shadow-lg ${sizeClasses[size]}
         transition-all duration-300
+        disabled:opacity-50 disabled:cursor-not-allowed
         ${className}
       `}
       whileHover={{ 
-        scale: 1.05,
-        boxShadow: variant === 'primary' 
+        scale: disabled ? 1 : 1.05,
+        boxShadow: disabled ? 'none' : (variant === 'primary' 
           ? '0 0 30px rgba(168, 85, 247, 0.8)' 
-          : '0 0 30px rgba(6, 182, 212, 0.8)'
+          : '0 0 30px rgba(6, 182, 212, 0.8)')
       }}
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: disabled ? 1 : 0.95 }}
       onClick={handleClick}
+      type={type}
+      disabled={disabled}
     >
       {/* Animated Border */}
       <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -70,7 +78,7 @@ export function NeonButton({
       </motion.div>
 
       {/* Ripple Effect */}
-      {isClicked && (
+      {isClicked && !disabled && (
         <motion.div
           className="absolute inset-0 rounded-lg bg-white/30"
           initial={{ scale: 0, opacity: 1 }}

@@ -1,113 +1,79 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Filter, Grid3X3, List, Zap, Rocket, Globe } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import { Sparkles, Zap, Rocket } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { FilterSidebar } from '../components/FilterSidebar';
-import LiveNFTFeed from '../components/LiveNFTFeed';
-import { ParticleBackground } from '../components/ParticleBackground';
-import { HolographicArt } from '../components/HolographicArt';
 import { NeonButton } from '../components/NeonButton';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useNavigate } from 'react-router-dom';
 import { connectWallet } from '../utils/blockchain';
 import { ethers } from 'ethers';
 import { NFT } from '../types';
-import { fetchLiveNfts } from '../services/moralis';
+import NFTDiscoveryDashboard from '../components/NFTDiscoveryDashboard';
+import { ParticleBackground } from '../components/ParticleBackground';
+import { HolographicArt } from '../components/HolographicArt';
+import { NFTCard } from '../components/NFTCard';
+import { fetchNFTsByCategory, fetchNFTById } from '../services/opensea';
 
 interface HomePageProps {
   onQuickBuy: (nft: NFT) => void;
 }
 
 export function HomePage({ onQuickBuy }: HomePageProps) {
-  const [nfts, setNfts] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('trending');
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
-  const [filters, setFilters] = useState({
-    contractAddress: ''
-  });
-  const navigate = useNavigate();
+  const [featuredNFT, setFeaturedNFT] = useState<NFT | null>(null);
+  const [artNfts, setArtNfts] = useState<NFT[]>([]);
+  const [comicNfts, setComicNfts] = useState<NFT[]>([]);
+  const [poemNfts, setPoemNfts] = useState<NFT[]>([]);
+  const [storyNfts, setStoryNfts] = useState<NFT[]>([]);
 
-  const featuredNFT = nfts.length > 0 ? nfts[0] : {};
-  const trendingCollections = nfts.slice(0, 3);
+  const navigate = useNavigate();
 
   // Mock market stats
   const marketStats = {
     totalSales: '240k',
-    totalNFTs: '100k', 
+    totalNFTs: '100k',
     totalUsers: '50k'
   };
 
-  const handleFiltersChange = (newFilters: any) => {
-    setFilters(prevFilters => ({ ...prevFilters, ...newFilters }));
-  };
-
   useEffect(() => {
+    // Force dark mode for the futuristic theme
+    document.documentElement.classList.add('dark');
+    
     const fetchFeaturedNft = async () => {
-      const MORALIS_API_KEY = import.meta.env.VITE_MORALIS_API_KEY || '';
-      if (!MORALIS_API_KEY) {
-        console.error('Moralis API key is not set.');
-        setLoading(false);
-        return;
-      }
-
-      const options = {
-        method: 'GET',
-        headers: { 'X-API-KEY': MORALIS_API_KEY },
-      };
-      
-      const contractAddress = '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D'; // BAYC contract
-      const url = `https://deep-index.moralis.io/api/v2/nft/${contractAddress}?chain=eth&format=decimal&limit=1`;
+      const contractAddress = '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D'; // BAYC
+      const tokenId = '8522'; // A specific cool-looking Ape
+      const chain = 'ethereum';
 
       try {
-        const response = await fetch(url, options);
-        if (!response.ok) throw new Error('Failed to fetch featured NFT');
-        
-        const data = await response.json();
-        if (data.result && data.result.length > 0) {
-          const asset = data.result[0];
-          let metadata = { name: '', description: '', image: '' };
-          if (asset.metadata) {
-            try {
-              metadata = JSON.parse(asset.metadata);
-            } catch (e) {
-              console.error('Failed to parse metadata for featured NFT:', e);
-            }
-          }
-          const resolveIpfsUrl = (url: string | undefined) => {
-            if (url && url.startsWith('ipfs://')) {
-              return `https://ipfs.io/ipfs/${url.substring(7)}`;
-            }
-            return url || '';
-          };
-          const featured: NFT = {
-            id: asset.token_id,
-            title: metadata.name || asset.name || 'No title',
-            image: resolveIpfsUrl(metadata.image),
-            price: 0,
-            currency: 'ETH',
-            isListed: false,
-            category: asset.symbol || 'uncategorized',
-            likes: 0,
-            views: 0,
-            creator: { name: 'Unknown', avatar: '', verified: false },
-            owner: { name: asset.owner_of, avatar: '' },
-            description: metadata.description || '',
-          };
-          setNfts([featured]);
-        }
+        const asset = await fetchNFTById(chain, contractAddress, tokenId);
+        if (!asset) throw new Error('Featured NFT not found');
+
+        setFeaturedNFT(asset);
       } catch (error) {
         console.error('Error fetching featured NFT:', error);
-      } finally {
-        setLoading(false);
       }
     };
+    
+    const loadPageData = async () => {
+      setLoading(true);
+      await fetchFeaturedNft();
+      
+      const fetchedArtNfts = await fetchNFTsByCategory('art');
+      setArtNfts(fetchedArtNfts);
 
-    document.documentElement.classList.add('dark');
-    fetchFeaturedNft();
+      const fetchedComicNfts = await fetchNFTsByCategory('comics');
+      setComicNfts(fetchedComicNfts);
+
+      const fetchedPoemNfts = await fetchNFTsByCategory('poems');
+      setPoemNfts(fetchedPoemNfts);
+
+      const fetchedStoryNfts = await fetchNFTsByCategory('stories');
+      setStoryNfts(fetchedStoryNfts);
+
+      setLoading(false);
+    };
+
+    loadPageData();
   }, []);
 
 
@@ -197,7 +163,7 @@ export function HomePage({ onQuickBuy }: HomePageProps) {
                     ) : (
                       <NeonButton
                         size="lg"
-                        onClick={() => document.getElementById('marketplace')?.scrollIntoView({ behavior: 'smooth' })}
+                        onClick={() => document.getElementById('nft-discovery')?.scrollIntoView({ behavior: 'smooth' })}
                       >
                         <Rocket className="h-5 w-5 mr-2" />
                         Explore NFTs
@@ -263,7 +229,7 @@ export function HomePage({ onQuickBuy }: HomePageProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 1, delay: 0.5 }}
                 >
-                  <HolographicArt nft={featuredNFT} onQuickBuy={onQuickBuy} />
+                  <HolographicArt nft={featuredNFT || {} as NFT} onQuickBuy={onQuickBuy} />
                 </motion.div>
               </div>
             </div>
@@ -278,132 +244,51 @@ export function HomePage({ onQuickBuy }: HomePageProps) {
             </motion.div>
           </section>
 
-          {/* Trending Collections */}
-          <section className="relative z-10 container mx-auto px-4 py-20">
-            <motion.div
-              className="space-y-12"
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1 }}
-            >
-              <div className="text-center space-y-4">
-                <h2 className="text-4xl font-bold text-white neon-text">Trending Collections</h2>
-                <p className="text-gray-400 text-lg">Discover the hottest collections in the metaverse</p>
-              </div>
+          {/* NFT Discovery Dashboard */}
+          <section id="nft-discovery" className="relative z-10 py-20">
+            <div className="container mx-auto px-4">
+              <h2 className="text-4xl font-bold text-center mb-12 text-white neon-text">Discover Unique NFTs</h2>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {trendingCollections.map((collection, index) => (
-                  <motion.div
-                    key={collection.id}
-                    className="group cursor-pointer"
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: index * 0.1 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <div className="relative bg-card/50 backdrop-blur-lg rounded-2xl p-6 border border-purple-500/30 hover:border-cyan-500/50 transition-all duration-300 neon-glow">
-                      <div className="flex items-center space-x-3 mb-6">
-                        <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center neon-glow">
-                          <span className="text-white font-bold">#{index + 1}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-white">{collection.title}</h3>
-                          <p className="text-sm text-gray-400">by {collection.creator.name}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-3 mb-6">
-                        {nfts.slice(0, 3).map((nft, i) => (
-                          <div key={i} className="aspect-square rounded-xl overflow-hidden border border-purple-500/30">
-                            <ImageWithFallback
-                              src={nft.image}
-                              alt={nft.title}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-400">Floor Price</p>
-                          <p className="font-bold text-cyan-400">{collection.floorPrice} ETH</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400">Volume</p>
-                          <p className="font-bold text-purple-400">{collection.totalVolume} ETH</p>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </section>
-
-          {/* NFT Marketplace */}
-          <section id="marketplace" className="relative z-10 container mx-auto px-4 pb-20">
-            <motion.div
-              className="space-y-12"
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1 }}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-4xl font-bold text-white neon-text mb-2">Explore NFTs</h2>
-                  <p className="text-gray-400 text-lg">Browse through our vast collection of digital artworks</p>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsFilterSidebarOpen(true)}
-                    className="md:hidden border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                  </Button>
+              {/* Art NFTs */}
+              <div className="mb-16">
+                <h3 className="text-3xl font-bold mb-6 text-purple-400 neon-text">Art</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {artNfts.map((nft) => (
+                    <NFTCard key={nft.id} nft={nft} onQuickBuy={() => navigate(`/nft/${nft.id}`)} onNFTListed={() => {}} />
+                  ))}
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 lg:w-fit bg-card/50 backdrop-blur-lg border border-purple-500/30">
-                  <TabsTrigger value="trending" className="data-[state=active]:bg-purple-500/30">Trending</TabsTrigger>
-                  <TabsTrigger value="recent" className="data-[state=active]:bg-purple-500/30">Recent</TabsTrigger>
-                  <TabsTrigger value="art" className="data-[state=active]:bg-purple-500/30">Art</TabsTrigger>
-                  <TabsTrigger value="gaming" className="data-[state=active]:bg-purple-500/30">Gaming</TabsTrigger>
-                </TabsList>
+              {/* Comic NFTs */}
+              <div className="mb-16">
+                <h3 className="text-3xl font-bold mb-6 text-cyan-400 neon-text">Comics</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {comicNfts.map((nft) => (
+                    <NFTCard key={nft.id} nft={nft} onQuickBuy={() => navigate(`/nft/${nft.id}`)} onNFTListed={() => {}} />
+                  ))}
+                </div>
+              </div>
 
-                <TabsContent value={activeTab} className="mt-8">
-                  <div className="flex gap-8">
-                    {/* Desktop Filter Sidebar */}
-                    <div className="hidden md:block w-64 flex-shrink-0">
-                      <FilterSidebar
-                        isOpen={true}
-                        onClose={() => {}}
-                        onFiltersChange={handleFiltersChange}
-                      />
-                    </div>
+              {/* Poem NFTs */}
+              <div className="mb-16">
+                <h3 className="text-3xl font-bold mb-6 text-pink-400 neon-text">Poems</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {poemNfts.map((nft) => (
+                    <NFTCard key={nft.id} nft={nft} onQuickBuy={() => navigate(`/nft/${nft.id}`)} onNFTListed={() => {}} />
+                  ))}
+                </div>
+              </div>
 
-                    {/* Mobile Filter Sidebar */}
-                    <FilterSidebar
-                      isOpen={isFilterSidebarOpen}
-                      onClose={() => setIsFilterSidebarOpen(false)}
-                      onFiltersChange={handleFiltersChange}
-                    />
-
-                    {/* NFT Grid */}
-                    <div className="flex-1">
-                      <LiveNFTFeed contractAddress={filters.contractAddress || '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D'} />
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
+              {/* Stories NFTs */}
+              <div className="mb-16">
+                <h3 className="text-3xl font-bold mb-6 text-green-400 neon-text">Stories</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {storyNfts.map((nft) => (
+                    <NFTCard key={nft.id} nft={nft} onQuickBuy={() => navigate(`/nft/${nft.id}`)} onNFTListed={() => {}} />
+                  ))}
+                </div>
+              </div>
+            </div>
           </section>
         </>
       )}

@@ -1,5 +1,4 @@
 import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '../utils/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -22,7 +21,6 @@ export function AuthPage() {
       <div className="w-full max-w-md">
         <Auth
           supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
           theme="dark"
           providers={['github', 'google']}
           redirectTo="http://localhost:3000/"

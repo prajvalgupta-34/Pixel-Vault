@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Menu, Moon, Sun } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Notifications } from './Notifications';
+import { WalletBalance } from './WalletBalance';
+import { useWallet } from '../context/WalletContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
@@ -13,15 +15,19 @@ import { Switch } from './ui/switch';
 interface HeaderProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  onSearch: (query: string) => void;
 }
 
-export function Header({ darkMode, onToggleDarkMode }: HeaderProps) {
+export function Header({ darkMode, onToggleDarkMode, onSearch }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signer, connectWallet } = useWallet();
 
   const navigation = [
-    { name: 'Marketplace', href: '/' },
+    { name: 'Home', href: '/' },
+    { name: 'Marketplace', href: '/marketplace' },
     { name: 'Mint', href: '/mint' },
     { name: 'Dashboard', href: '/dashboard' },
   ];
@@ -33,7 +39,19 @@ export function Header({ darkMode, onToggleDarkMode }: HeaderProps) {
     return location.pathname.startsWith(href);
   };
 
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      onSearch(searchQuery.trim());
+      navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
+      setIsMobileMenuOpen(false); // Close mobile menu after search
+    }
+  };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-purple-500/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -69,12 +87,13 @@ export function Header({ darkMode, onToggleDarkMode }: HeaderProps) {
           {/* Search Bar - Desktop */}
           <div className="hidden lg:flex items-center flex-1 max-w-md mx-8">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" onClick={handleSearch} />
               <Input
                 type="text"
                 placeholder="Search NFTs, collections, and accounts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="pl-10 bg-black/50 border-purple-500/30 text-gray-200 placeholder:text-gray-500 focus:border-cyan-500/50"
               />
             </div>
@@ -82,6 +101,11 @@ export function Header({ darkMode, onToggleDarkMode }: HeaderProps) {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
+            {signer ? (
+              <WalletBalance />
+            ) : (
+              <Button onClick={connectWallet}>Connect Wallet</Button>
+            )}
             <Link to="/auth">
               <Button>Login</Button>
             </Link>
@@ -117,12 +141,13 @@ export function Header({ darkMode, onToggleDarkMode }: HeaderProps) {
                 <div className="flex flex-col space-y-6 mt-6">
                   {/* Mobile Search */}
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" onClick={handleSearch} />
                     <Input
                       type="text"
                       placeholder="Search..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={handleKeyDown}
                       className="pl-10"
                     />
                   </div>

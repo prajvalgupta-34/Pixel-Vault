@@ -58,7 +58,8 @@ CREATE TABLE transactions (
   buyer_id UUID REFERENCES profiles(id),
   seller_id UUID REFERENCES profiles(id),
   price NUMERIC NOT NULL,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  tx_hash TEXT
 );
 
 -- Bids Table

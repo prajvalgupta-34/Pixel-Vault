@@ -12,7 +12,7 @@ import { NFTCard } from '../components/NFTCard';
 import { NFT } from '../types';
 import { TransactionHistory } from '../components/TransactionHistory';
 import { Bidding } from '../components/Bidding';
-import { fetchLiveNfts } from '../services/moralis';
+import { fetchNFTsByCategory } from '../services/opensea';
 import { useEffect } from 'react';
 import { buyNft } from '../services/buy';
 import { connectWallet } from '../utils/blockchain';
@@ -42,8 +42,9 @@ export function NFTDetailPage({ onQuickBuy }: NFTDetailPageProps) {
   useEffect(() => {
     const loadNfts = async () => {
       setLoading(true);
-      const liveNfts = await fetchLiveNfts();
-      setNfts(liveNfts);
+      // Fetch a general list of NFTs, using 'art' as a default category for now
+      const fetchedNfts = await fetchNFTsByCategory('art');
+      setNfts(fetchedNfts);
       setLoading(false);
     };
 
@@ -174,7 +175,7 @@ export function NFTDetailPage({ onQuickBuy }: NFTDetailPageProps) {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={nft.creator.avatar} />
+                      <AvatarImage src={nft.creator.avatar || 'https://i.imgur.com/5d8bSzg.png'} />
                       <AvatarFallback>
                         <User className="h-5 w-5" />
                       </AvatarFallback>
@@ -194,7 +195,7 @@ export function NFTDetailPage({ onQuickBuy }: NFTDetailPageProps) {
 
                   <div className="flex items-center space-x-2">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={nft.owner.avatar} />
+                      <AvatarImage src={nft.owner.avatar || 'https://i.imgur.com/5d8bSzg.png'} />
                       <AvatarFallback>
                         <User className="h-5 w-5" />
                       </AvatarFallback>
@@ -327,6 +328,7 @@ export function NFTDetailPage({ onQuickBuy }: NFTDetailPageProps) {
                   key={relatedNft.id}
                   nft={relatedNft}
                   onQuickBuy={onQuickBuy}
+                  onNFTListed={() => {}}
                 />
               ))}
             </div>

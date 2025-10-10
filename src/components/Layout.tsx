@@ -5,12 +5,13 @@ interface LayoutProps {
   children: React.ReactNode;
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  onSearch: (query: string) => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, darkMode, onToggleDarkMode }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, darkMode, onToggleDarkMode, onSearch }) => {
   return (
     <div className="min-h-screen bg-background">
-      <Header darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+      <Header darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onSearch={onSearch} />
       <main>{children}</main>
       <footer className="bg-muted/30 border-t mt-16">
         <div className="container mx-auto px-4 py-12">
